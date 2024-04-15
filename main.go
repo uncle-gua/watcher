@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -72,15 +73,15 @@ func run(a Account) (float64, error) {
 			value := position.PositionAmt * position.EntryPrice
 			roe := position.UnrealizedProfit / value * 100
 			if roe > a.Profit {
-				// if _, err := client.NewCreateOrderService().
-				// 	Symbol(position.Symbol).
-				// 	Type(futures.OrderTypeMarket).
-				// 	Side(futures.SideTypeSell).
-				// 	PositionSide(futures.PositionSideTypeLong).
-				// 	Quantity(fmt.Sprintf("%f", position.PositionAmt)).
-				// 	Do(context.Background()); err != nil {
-				// 	return leverage, err
-				// }
+				if _, err := client.NewCreateOrderService().
+					Symbol(position.Symbol).
+					Type(futures.OrderTypeMarket).
+					Side(futures.SideTypeSell).
+					PositionSide(futures.PositionSideTypeLong).
+					Quantity(fmt.Sprintf("%f", position.PositionAmt)).
+					Do(context.Background()); err != nil {
+					return leverage, err
+				}
 				log.Infof("account: %s, symbol: %s, pnl: %.2f, roe: %.2f", a.Name, position.Symbol, position.UnrealizedProfit, roe)
 			} else {
 				total += value
