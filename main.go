@@ -67,6 +67,21 @@ func run(a Account) (float64, error) {
 		return leverage, err
 	}
 
+	roe := account.TotalUnrealizedProfit / account.TotalWalletBalance * 100
+	if roe > a.Profit {
+		for _, position := range account.Positions {
+			if _, err := client.NewCreateOrderService().
+				Symbol(position.Symbol).
+				Type(futures.OrderTypeMarket).
+				Side(futures.SideTypeSell).
+				PositionSide(futures.PositionSideTypeLong).
+				Quantity(fmt.Sprintf("%f", position.PositionAmt)).
+				Do(context.Background()); err != nil {
+				return leverage, err
+			}
+		}
+	}
+
 	total := 0.0
 	for _, position := range account.Positions {
 		if position.PositionAmt > 0 {
