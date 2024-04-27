@@ -22,6 +22,8 @@ type Account struct {
 	Spec      string  `json:"spec"`
 }
 
+var tops = map[string]float64{}
+
 func main() {
 	body, err := os.ReadFile("./config.json")
 	if err != nil {
@@ -88,18 +90,31 @@ func run(a Account) (float64, error) {
 			value := position.PositionAmt * position.EntryPrice
 			roe := position.UnrealizedProfit / value * 100
 			if roe > a.Profit {
-				if _, err := client.NewCreateOrderService().
-					Symbol(position.Symbol).
-					Type(futures.OrderTypeMarket).
-					Side(futures.SideTypeSell).
-					PositionSide(futures.PositionSideTypeLong).
-					Quantity(fmt.Sprintf("%f", position.PositionAmt)).
-					Do(context.Background()); err != nil {
-					return leverage, err
+				if top, ok := tops[position.Symbol]; ok {
+					if roe > top {
+						tops[position.Symbol] = roe
+					} else {
+						if top-roe > top/10 {
+							if _, err := client.NewCreateOrderService().
+								Symbol(position.Symbol).
+								Type(futures.OrderTypeMarket).
+								Side(futures.SideTypeSell).
+								PositionSide(futures.PositionSideTypeLong).
+								Quantity(fmt.Sprintf("%f", position.PositionAmt)).
+								Do(context.Background()); err != nil {
+								return leverage, err
+							}
+							log.Infof("account: %s, symbol: %s, pnl: %.2f, roe: %.2f", a.Name, position.Symbol, position.UnrealizedProfit, roe)
+						}
+					}
+				} else {
+					tops[position.Symbol] = roe
 				}
-				log.Infof("account: %s, symbol: %s, pnl: %.2f, roe: %.2f", a.Name, position.Symbol, position.UnrealizedProfit, roe)
 			} else {
 				total += value
+				if top, ok := tops[position.Symbol]; !ok || roe > top {
+					tops[position.Symbol] = roe
+				}
 			}
 		}
 	}
